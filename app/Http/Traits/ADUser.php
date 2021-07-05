@@ -14,8 +14,9 @@ trait ADUser
    * @param array $groups: group object containing user groups in an hirrachical order
    * @return string, the message of the operations.
    */
-  private function addUser($connection, $domain, $userCN, $user = [], $groups = [])
+  private function addUser($userCN, $user = [], $groups = [])
   {
+    $domain = env('LDAP_DOMAIN_NAME');
 
     $organizationUnit = function ($name) {
       return $this->organizationUnit($name);
@@ -37,12 +38,17 @@ trait ADUser
         $OUs = implode(",", $OUs);
 
         $userDN = "{$CN},{$OUs},{$DC}";
-        $isAdded = ldap_add($connection, $userDN, $user);
 
-        if ($isAdded) {
-          return $this->alert(env('SUCCESS_MESSAGE'), "User created successfully.");
+        $ldapServerConnection = $this->ldapConnection();
+        if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
+          $isAdded = ldap_add($ldapServerConnection, $userDN, $user);
+          if ($isAdded) {
+            return $this->alert(env('SUCCESS_MESSAGE'), "User created successfully.");
+          } else {
+            return $this->alert(env('ERROR_MESSAGE'), "Error creating user!");
+          }
         } else {
-          return $this->alert(env('ERROR_MESSAGE'), "Error creating user!");
+          return $ldapServerConnection;
         }
       } catch (\Throwable $th) {
         return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
@@ -60,8 +66,9 @@ trait ADUser
    * @param array $groups: group object containing user groups in an hirrachical order
    * @return string, the message of the operations.
    */
-  private function updateUser($connection, $domain, $userCN, $user = [], $groups = [])
+  private function updateUser($userCN, $user = [], $groups = [])
   {
+    $domain = env('LDAP_DOMAIN_NAME');
 
     $organizationUnit = function ($name) {
       return $this->organizationUnit($name);
@@ -83,12 +90,17 @@ trait ADUser
         $OUs = implode(",", $OUs);
 
         $userDN = "{$CN},{$OUs},{$DC}";
-        $isUpdated = ldap_mod_replace($connection, $userDN, $user);
 
-        if ($isUpdated) {
-          return $this->alert(env('SUCCESS_MESSAGE'), "User details updated successfully.");
+        $ldapServerConnection = $this->ldapConnection();
+        if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
+          $isUpdated = ldap_mod_replace($ldapServerConnection, $userDN, $user);
+          if ($isUpdated) {
+            return $this->alert(env('SUCCESS_MESSAGE'), "User details updated successfully.");
+          } else {
+            return $this->alert(env('ERROR_MESSAGE'), "Error updating user details!");
+          }
         } else {
-          return $this->alert(env('ERROR_MESSAGE'), "Error updating user details!");
+          return $ldapServerConnection;
         }
       } catch (\Throwable $th) {
         return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
@@ -105,8 +117,9 @@ trait ADUser
    * @param array $groups: group object containing user groups in an hirrachical order
    * @return string, the message of the operations.
    */
-  private function destroyUser($connection, $domain, $userCN, $groups = [])
+  private function destroyUser($userCN, $groups = [])
   {
+    $domain = env('LDAP_DOMAIN_NAME');
 
     $organizationUnit = function ($name) {
       return $this->organizationUnit($name);
@@ -128,12 +141,17 @@ trait ADUser
         $OUs = implode(",", $OUs);
 
         $userDN = "{$CN},{$OUs},{$DC}";
-        $isDeleted = ldap_delete($connection, $userDN);
 
-        if ($isDeleted) {
-          return $this->alert(env('SUCCESS_MESSAGE'), "User deleted successfully.");
+        $ldapServerConnection = $this->ldapConnection();
+        if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
+          $isDeleted = ldap_delete($ldapServerConnection, $userDN);
+          if ($isDeleted) {
+            return $this->alert(env('SUCCESS_MESSAGE'), "User deleted successfully.");
+          } else {
+            return $this->alert(env('ERROR_MESSAGE'), "Error deleting user!");
+          }
         } else {
-          return $this->alert(env('ERROR_MESSAGE'), "Error deleting user!");
+          return $ldapServerConnection;
         }
       } catch (\Throwable $th) {
         return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
@@ -146,30 +164,42 @@ trait ADUser
   /**
    * Prepares user object ready for submission to the LDAP server.
    */
-  private function prepareUserAccountDetails($domain, $groups, $fname, $initials, $lname, $username, $password, $email, $mobile)
+  private function prepareUserAccountDetails($fname, $initials, $lname, $username, $password, $email, $mobile, $groups = [], $user = [])
   {
+    $domain = env('LDAP_DOMAIN_NAME');
 
     try {
-      $domainController = function ($domain) {
-        return $this->domainController($domain);
-      };
 
-      $DC = explode(".", $domain);
-      $DC = array_map($domainController, $DC);
-      $DC = implode(",", $DC);
-
-      $user = [];
-      $user['objectclass'][0] = "top";
-      $user['objectclass'][1] = "person";
-      $user['objectclass'][2] = "organizationalPerson";
-      $user['objectclass'][3] = "user";
       $user['givenname'][0] = $fname;
       $user['initials'][0] = $initials;
       $user['sn'][0] = $lname;
-      $user['cn'][0] = $user['givenname'][0] . " " . $user['sn'][0];
-      $user['samaccountname'][0] = $username;
-      $user['userprincipalname'][0] = $user['samaccountname'][0] . "@{$domain}";
-      $user['distinguishedname'][0] = "CN={$user['cn'][0]},{$groups},{$DC}";
+
+      if (!isset($user['cn'])) {
+        $organizationUnit = function ($name) {
+          return $this->organizationUnit($name);
+        };
+
+        $domainController = function ($domain) {
+          return $this->domainController($domain);
+        };
+
+        $DC = explode(".", $domain);
+        $DC = array_map($domainController, $DC);
+        $DC = implode(",", $DC);
+
+        $OUs = array_map($organizationUnit, $groups);
+        $OUs = implode(",", $OUs);
+
+        $user['objectclass'][0] = "top";
+        $user['objectclass'][1] = "person";
+        $user['objectclass'][2] = "organizationalPerson";
+        $user['objectclass'][3] = "user";
+        $user['cn'][0] = $user['givenname'][0] . " " . $user['sn'][0];
+        $user['samaccountname'][0] = $username;
+        $user['userprincipalname'][0] = $user['samaccountname'][0] . "@{$domain}";
+        $user['distinguishedname'][0] = "CN={$user['cn'][0]},{$OUs},{$DC}";
+      }
+
       $user['mail'][0] = $email;
       $user['mobile'][0] = $mobile;
       $user['instancetype'][0] = 4;
@@ -218,9 +248,9 @@ trait ADUser
    * Adds a valid organizational unit string
    * @return string string.
    */
-  private function domainController($domain)
+  private function domainController($domain_name_section)
   {
-    return "DC=" . $domain;
+    return "DC=" . $domain_name_section;
   }
 
   /**
