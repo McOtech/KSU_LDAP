@@ -16,13 +16,28 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+/**
+ * ============================================================================================================
+ * Auth Routes
+ * ============================================================================================================
+ */
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/login', function (Request $request) {
-    return response()->json(["mesage" => 'Unauthorised'], 401);
+    return response()->json(["message" => ["type" => 'error', "description" => 'Unauthorised']], 401);
 })->name('login');
 
+/**
+ * ===========================================================================================================
+ * Private Routes
+ * ===========================================================================================================
+ */
 Route::group(['middleware' => ['auth:sanctum', 'checkAuthSession', 'adminAuth']], function () {
+    /**
+     * =======================================================================================================
+     * Auth Routes
+     * =======================================================================================================
+     */
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 

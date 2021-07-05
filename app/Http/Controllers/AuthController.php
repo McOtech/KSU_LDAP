@@ -9,87 +9,26 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Traits\Utils;
+
 
 class AuthController extends Controller
 {
-    public function Register(Request $request) {
-        $fields = [];
-        $imageUrl = '';
-
+    use Utils;
+    public function register(Request $request)
+    {
         try {
-            $fields = $request->validate([
-                'fname' => ['required', 'string'],
-                'lname' => ['required', 'string'],
-                'phone' => ['required', 'string'],
-                'image' => ['required', 'image'],
-                'postal_code' => ['required', 'string'],
-                'postal_address' => ['required', 'string'],
-                'town' => ['required', 'string'],
-                'type' => ['required', 'string', 'unique:profiles,type'],
-                'username' => ['required', 'string', 'unique:users,name'],
-                'email' => ['required', 'email', 'unique:users,email'],
-                'password' => ['required', 'string', 'confirmed'],
+            $credentials = $request->validate([
+                'username' => ['required', 'string', 'max:100'],
+                'password' => ['required', 'string', 'confirmed']
             ]);
         } catch (\Throwable $th) {
-            return response()->json(['message' => $th->getMessage()], 400);
-        }
-
-        try {
-            $imageUrl = $request->file('image')->store('public/profiles');
-            if ($imageUrl) {
-                $fields['image'] = $imageUrl;
-            } else {
-                return response()->json(['message' => 'Image upload failed.'], 400);
-            }
-        } catch (\Throwable $th) {
-            return response()->json(['message' => $th->getMessage()], 400);
-        }
-
-        try {
-            $user = User::create([
-                'name' => $fields['username'],
-                'email' => $fields['email'],
-                'password' => bcrypt($fields['password']),
-            ]);
-        } catch (\Throwable $th) {
-            return response()->json(['message' => 'Error occured while creating the user. Please try again later'], 400);
-        } finally {
-            try {
-                $profile = Profile::create([
-                    'user_id' => $user['id'],
-                    'fname' => $fields['fname'],
-                    'lname' => $fields['lname'],
-                    'phone' => $fields['phone'],
-                    'image' => $imageUrl,
-                    'postal_address' => $fields['postal_address'],
-                    'postal_code' => $fields['postal_code'],
-                    'town' => $fields['town'],
-                    'type' => $fields['type']
-                ]);
-
-                $token = $user->createToken('auth')->plainTextToken;
-                $response = [
-                    'user' => [
-                        'id' => $user['id'],
-                        'name' => $user['name'],
-                        'email' => $user['email']
-                    ],
-                    'token' => $token
-                ];
-                // $request->headers->set('Authorization', 'Bearer '.$token);
-                $request->session()->put('user', [
-                    'id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email']
-                ]);
-                return response($response, 201);
-            } catch (\Throwable $th) {
-                return response()->json(['message' => $th->getMessage()], 400);
-            }
+            return response()->json($this->alert(env('ERROR_MESSAGE'), $th->getMessage()));
         }
     }
 
-    public function logout(Request $request) {
+    public function logout(Request $request)
+    {
         if ($request->session()->has('user')) {
             auth()->user()->tokens()->delete();
             $request->session()->flush();
@@ -97,10 +36,10 @@ class AuthController extends Controller
         } else {
             return response(["message" => 'User not logged in'], 200);
         }
-
     }
 
-    public function login(Request $request) {
+    public function login(Request $request)
+    {
 
         try {
             if ($request->session()->has('user')) {
