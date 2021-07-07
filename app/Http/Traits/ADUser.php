@@ -17,44 +17,49 @@ trait ADUser
   private function addUser($userCN, $user = [], $groups = [])
   {
     $domain = env('LDAP_DOMAIN_NAME');
+    $ldapServerConnection = $this->ldapConnection();
+    $bind = $this->bindToServer($domain);
 
-    $organizationUnit = function ($name) {
-      return $this->organizationUnit($name);
-    };
+    if ($bind) {
+      $organizationUnit = function ($name) {
+        return $this->organizationUnit($name);
+      };
 
-    $domainController = function ($domain) {
-      return $this->domainController($domain);
-    };
+      $domainController = function ($domain) {
+        return $this->domainController($domain);
+      };
 
-    if (!empty($user) && !empty($groups)) {
-      try {
-        $DC = explode(".", $domain);
-        $DC = array_map($domainController, $DC);
-        $DC = implode(",", $DC);
+      if (!empty($user) && !empty($groups)) {
+        try {
+          $DC = explode(".", $domain);
+          $DC = array_map($domainController, $DC);
+          $DC = implode(",", $DC);
 
-        $CN = "CN=" . $userCN;
+          $CN = "CN=" . $userCN;
 
-        $OUs = array_map($organizationUnit, $groups);
-        $OUs = implode(",", $OUs);
+          $OUs = array_map($organizationUnit, $groups);
+          $OUs = implode(",", $OUs);
 
-        $userDN = "{$CN},{$OUs},{$DC}";
+          $userDN = "{$CN},{$OUs},{$DC}";
 
-        $ldapServerConnection = $this->ldapConnection();
-        if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
-          $isAdded = ldap_add($ldapServerConnection, $userDN, $user);
-          if ($isAdded) {
-            return $this->alert(env('SUCCESS_MESSAGE'), "User created successfully.");
+          if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
+            $isAdded = ldap_add($ldapServerConnection, $userDN, $user);
+            if ($isAdded) {
+              return $this->alert(env('SUCCESS_MESSAGE'), "User created successfully.");
+            } else {
+              return $this->alert(env('ERROR_MESSAGE'), "Error creating user!");
+            }
           } else {
-            return $this->alert(env('ERROR_MESSAGE'), "Error creating user!");
+            return $ldapServerConnection;
           }
-        } else {
-          return $ldapServerConnection;
+        } catch (\Throwable $th) {
+          return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
         }
-      } catch (\Throwable $th) {
-        return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
+      } else {
+        return $this->alert(env('WARNING_MESSAGE'), "User or Group Details empty!");
       }
     } else {
-      return $this->alert(env('WARNING_MESSAGE'), "User or Group Details empty!");
+      $this->alert(env('ERROR_MESSAGE'), "System Error! Account not created.");
     }
   }
 
@@ -69,44 +74,49 @@ trait ADUser
   private function updateUser($userCN, $user = [], $groups = [])
   {
     $domain = env('LDAP_DOMAIN_NAME');
+    $ldapServerConnection = $this->ldapConnection();
+    $bind = $this->bindToServer($domain);
 
-    $organizationUnit = function ($name) {
-      return $this->organizationUnit($name);
-    };
+    if ($bind) {
+      $organizationUnit = function ($name) {
+        return $this->organizationUnit($name);
+      };
 
-    $domainController = function ($domain) {
-      return $this->domainController($domain);
-    };
+      $domainController = function ($domain) {
+        return $this->domainController($domain);
+      };
 
-    if (!empty($user) && !empty($groups)) {
-      try {
-        $DC = explode(".", $domain);
-        $DC = array_map($domainController, $DC);
-        $DC = implode(",", $DC);
+      if (!empty($user) && !empty($groups)) {
+        try {
+          $DC = explode(".", $domain);
+          $DC = array_map($domainController, $DC);
+          $DC = implode(",", $DC);
 
-        $CN = "CN=" . $userCN;
+          $CN = "CN=" . $userCN;
 
-        $OUs = array_map($organizationUnit, $groups);
-        $OUs = implode(",", $OUs);
+          $OUs = array_map($organizationUnit, $groups);
+          $OUs = implode(",", $OUs);
 
-        $userDN = "{$CN},{$OUs},{$DC}";
+          $userDN = "{$CN},{$OUs},{$DC}";
 
-        $ldapServerConnection = $this->ldapConnection();
-        if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
-          $isUpdated = ldap_mod_replace($ldapServerConnection, $userDN, $user);
-          if ($isUpdated) {
-            return $this->alert(env('SUCCESS_MESSAGE'), "User details updated successfully.");
+          if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
+            $isUpdated = ldap_mod_replace($ldapServerConnection, $userDN, $user);
+            if ($isUpdated) {
+              return $this->alert(env('SUCCESS_MESSAGE'), "User details updated successfully.");
+            } else {
+              return $this->alert(env('ERROR_MESSAGE'), "Error updating user details!");
+            }
           } else {
-            return $this->alert(env('ERROR_MESSAGE'), "Error updating user details!");
+            return $ldapServerConnection;
           }
-        } else {
-          return $ldapServerConnection;
+        } catch (\Throwable $th) {
+          return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
         }
-      } catch (\Throwable $th) {
-        return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
+      } else {
+        return $this->alert(env('WARNING_MESSAGE'), "User or Group Details empty!");
       }
     } else {
-      return $this->alert(env('WARNING_MESSAGE'), "User or Group Details empty!");
+      $this->alert(env('ERROR_MESSAGE'), "System Error! Account not updated.");
     }
   }
 
@@ -120,44 +130,49 @@ trait ADUser
   private function destroyUser($userCN, $groups = [])
   {
     $domain = env('LDAP_DOMAIN_NAME');
+    $ldapServerConnection = $this->ldapConnection();
+    $bind = $this->bindToServer($domain);
 
-    $organizationUnit = function ($name) {
-      return $this->organizationUnit($name);
-    };
+    if ($bind) {
+      $organizationUnit = function ($name) {
+        return $this->organizationUnit($name);
+      };
 
-    $domainController = function ($domain) {
-      return $this->domainController($domain);
-    };
+      $domainController = function ($domain) {
+        return $this->domainController($domain);
+      };
 
-    if (!empty($groups)) {
-      try {
-        $DC = explode(".", $domain);
-        $DC = array_map($domainController, $DC);
-        $DC = implode(",", $DC);
+      if (!empty($groups)) {
+        try {
+          $DC = explode(".", $domain);
+          $DC = array_map($domainController, $DC);
+          $DC = implode(",", $DC);
 
-        $CN = "CN=" . $userCN;
+          $CN = "CN=" . $userCN;
 
-        $OUs = array_map($organizationUnit, $groups);
-        $OUs = implode(",", $OUs);
+          $OUs = array_map($organizationUnit, $groups);
+          $OUs = implode(",", $OUs);
 
-        $userDN = "{$CN},{$OUs},{$DC}";
+          $userDN = "{$CN},{$OUs},{$DC}";
 
-        $ldapServerConnection = $this->ldapConnection();
-        if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
-          $isDeleted = ldap_delete($ldapServerConnection, $userDN);
-          if ($isDeleted) {
-            return $this->alert(env('SUCCESS_MESSAGE'), "User deleted successfully.");
+          if (!isset($ldapServerConnection[env('MESSAGE_LITERAL')])) {
+            $isDeleted = ldap_delete($ldapServerConnection, $userDN);
+            if ($isDeleted) {
+              return $this->alert(env('SUCCESS_MESSAGE'), "User deleted successfully.");
+            } else {
+              return $this->alert(env('ERROR_MESSAGE'), "Error deleting user!");
+            }
           } else {
-            return $this->alert(env('ERROR_MESSAGE'), "Error deleting user!");
+            return $ldapServerConnection;
           }
-        } else {
-          return $ldapServerConnection;
+        } catch (\Throwable $th) {
+          return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
         }
-      } catch (\Throwable $th) {
-        return $this->alert(env('ERROR_MESSAGE'), $th->getMessage());
+      } else {
+        return $this->alert(env('WARNING_MESSAGE'), "Group Details empty!");
       }
     } else {
-      return $this->alert(env('WARNING_MESSAGE'), "Group Details empty!");
+      $this->alert(env('ERROR_MESSAGE'), "System Error! Account not destroyed.");
     }
   }
 

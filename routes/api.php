@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ArticlesController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\StudentsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Route;
  * Auth Routes
  * ============================================================================================================
  */
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/students', [StudentsController::class, 'store']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/login', function (Request $request) {
     return response()->json(["message" => ["type" => 'error', "description" => 'Unauthorised']], 401);
