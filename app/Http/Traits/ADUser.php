@@ -164,17 +164,18 @@ trait ADUser
   /**
    * Prepares user object ready for submission to the LDAP server.
    */
-  private function prepareUserAccountDetails($fname, $initials, $lname, $username, $password, $email, $mobile, $groups = [], $user = [])
+  private function prepareUserAccountDetails($fname, $initials, $lname, $username, $password, $email, $mobile, $groups = [], $existingUser = [])
   {
     $domain = env('LDAP_DOMAIN_NAME');
 
     try {
+      $user = [];
 
       $user['givenname'][0] = $fname;
       $user['initials'][0] = $initials;
       $user['sn'][0] = $lname;
 
-      if (!isset($user['cn'])) {
+      if (!isset($existingUser['cn'])) {
         $organizationUnit = function ($name) {
           return $this->organizationUnit($name);
         };
